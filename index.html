@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <style>
+    .red-start {
+      width: 200px;
+      height: 80px;
+      background-color: red;
+      margin-top: 20px;
+      margin-left: 20px;
+      transform-origin: 45% 65%;
+    }
+  </style>
+
+  <div class="red-start"></div>
+
+
+  <script>
+    const ieVersion = Number(document.documentMode) || 0;
+
+    const on = (function () {
+      if (document && document.addEventListener) {
+        return (element, type, listener, useCapture = false) => {
+          if (element && type && listener) {
+            element.addEventListener(type, listener, useCapture);
+          }
+        }
+      } else {
+        return (element, type, listener, useCapture = false) => {
+          if (element && type && listener) {
+            element.attachEvent(`on${event}`, listener, useCapture);
+          }
+        }
+      }
+    })()
+
+    const off = (function () {
+      if (document && document.removeEventListener) {
+        return (element, type, listener, useCapture = false) => {
+          if (element && type && listener) {
+            element.removeEventListener(type, listener, useCapture);
+          }
+        }
+      } else {
+        return (element, type, listener, useCapture = false) => {
+          if (element && type && listener) {
+            element.detachEvent(`on${event}`, listener, useCapture);
+          }
+        }
+      }
+    })()
+
+
+    const getStyle = (function () {
+      if (window && window.getComputedStyle) {
+        return (element, attribute, pseudoElt = null) => {
+          if (element && attribute) {
+            const styles = window.getComputedStyle(element, pseudoElt)
+
+            if (attribute === 'float') {
+              attribute = 'cssFloat'
+            }
+
+            return styles.getPropertyValue(attribute) || element.style[attribute]
+          }
+        }
+      } else {
+        if (attribute === 'float') {
+          attribute = 'styleFloat';
+        }
+
+        if (attribute === 'opacity') {
+          return element.filters.item('alpha').opacity / 100 || 1.0;
+        }
+
+
+        return element.currentStyle[attribute] || element.style[attribute]
+      }
+    })()
+
+    const setStyle = (element, attributes, value) => {
+      if (!element || !attributes) return;
+
+      if (typeof attributes === 'object') {
+        for (let prop in attributes) {
+          if (attributes.hasOwnProperty(prop)) {
+            setStyle(element, prop, attributes[prop]);
+          }
+        }
+      } else {
+        if (attributes === 'opacity' && ieVersion < 9) {
+          element.style.filter = isNaN(value) ? '' : 'alpha(opacity=' + value * 100 + ')';
+        } else {
+          element.style[attributes] = value;
+        }
+      }
+
+    }
+
+    const getPosition = (event) => {
+      const e = event || window.event
+      const scrollLeft = document.body.scrollLeft || document.documentElement.scrollLeft
+      const scrollTop = document.body.scrollTop || document.documentElement.scrollTop
+
+      const coords = {
+        x: 0,
+        y: 0
+      }
+
+      if (e.pageX || e.pageY) {
+        coords.x = e.pageX
+        coords.y = e.pageY
+      } else {
+        coords.x = e.clientX + scrollLeft
+        coords.y = e.clientY + scrollTop
+      }
+
+      return coords
+    }
+
+    const getDistance = (start, end) => {
+      const {
+        x: sx = 0,
+        y: sy = 0
+      } = start || {}
+      const {
+        x: ex = 0,
+        y: ey = 0
+      } = end || {}
+
+      return [ex - sx, ey - sy]
+    }
+
+
+    const is3D = (transform) => {
+      return transform.search("none") === 0 ? 2 : transform.search('matrix3d') === 0 ? 1 : 0
+    }
+
+    const matrixDecoder = (element) => {
+      const transform = getStyle(element, 'transform')
+      const code = is3D(transform)
+      // transform-origin 默认元素几何中心
+      const transOrigin = getStyle(element, 'transform-origin').split(" ")
+      // 坐标原点
+      const originX = parseFloat(transOrigin[0]);
+      const originY = parseFloat(transOrigin[1]);
+      const originZ = transOrigin[2] && code ? parseFloat(transOrigin[2]) : 0;
+      let matrix = null
+
+      if (code === 2) {
+        matrix = [1, 0, 0, 1, 0, 0]
+      } else {
+        matrix = ((transform.slice(transform.search(/\x28/) + 1, transform.search(/\x29/))).split(","));
+
+        matrix.forEach(m => {
+          m = parseFloat(m)
+        });
+
+        if (code === 0) {
+          matrix.push(0)
+        }
+      }
+
+      console.log(matrix, 'matrix', transOrigin)
+    }
+
+    matrixDecoder(document.querySelector('.red-start'))
+
+
+    function draggable(element, options = {}) {
+      const {
+        onDragStart,
+        onDragEnd,
+        onDrag
+      } = options
+
+      let start = null
+      let end = null
+
+      on(window, 'mousemove', (event) => {
+        if (start) {
+          const transform = getStyle(element, 'transform')
+          const current = getPosition(event)
+          const distance = getDistance(start, current)
+          console.log(transform, 'transform')
+          setStyle(element, 'transform', `translate(${distance[0]}px, ${distance[1]}px)`)
+        }
+
+
+
+        if (end) {
+          start = null
+          end = null
+        }
+
+        if (typeof onDrag === 'function') {
+          onDrag()
+        }
+
+      })
+
+      on(element, 'mousedown', (event) => {
+        event.stopPropagation();
+        start = getPosition(event)
+        if (typeof onDragStart === 'function') {
+          onDragStart()
+        }
+      })
+
+      on(element, 'mouseup', (event) => {
+        end = getPosition(event)
+
+        if (typeof onDragEnd === 'function') {
+          onDragEnd()
+        }
+      })
+
+      on(element, 'selectstart', (event) => {
+        event.preventDefault()
+      })
+    }
+
+    draggable(document.querySelector('.red-start'))
+  </script>
+</body>
+
+</html>
