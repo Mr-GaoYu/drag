@@ -16,7 +16,7 @@
       background-color: red;
       margin-top: 20px;
       margin-left: 20px;
-      transform-origin: 45% 65%;
+
     }
   </style>
 
@@ -140,39 +140,226 @@
     }
 
 
-    const is3D = (transform) => {
-      return transform.search("none") === 0 ? 2 : transform.search('matrix3d') === 0 ? 1 : 0
-    }
-
     const matrixDecoder = (element) => {
-      const transform = getStyle(element, 'transform')
-      const code = is3D(transform)
-      // transform-origin 默认元素几何中心
-      const transOrigin = getStyle(element, 'transform-origin').split(" ")
-      // 坐标原点
-      const originX = parseFloat(transOrigin[0]);
-      const originY = parseFloat(transOrigin[1]);
-      const originZ = transOrigin[2] && code ? parseFloat(transOrigin[2]) : 0;
-      let matrix = null
-
-      if (code === 2) {
-        matrix = [1, 0, 0, 1, 0, 0]
-      } else {
-        matrix = ((transform.slice(transform.search(/\x28/) + 1, transform.search(/\x29/))).split(","));
-
-        matrix.forEach(m => {
-          m = parseFloat(m)
-        });
-
-        if (code === 0) {
-          matrix.push(0)
-        }
+      const is3D = (transform) => {
+        return transform.includes("none") ? 2 : transform.includes('matrix3d') ? 1 : 0
       }
 
-      console.log(matrix, 'matrix', transOrigin)
+      // 初始化3d矩阵
+      const identity = () => {
+        let matrix = []
+        for (let i = 0; i < 16; i++) {
+          i % 5 == 0 ? matrix.push(1) : matrix.push(0)
+        }
+        return matrix
+      }
+
+      const formatMatrix = (transform) => {
+        const code = is3D(transform)
+        let matrix = identity()
+        if (code === 2) {
+          return matrix
+        }
+
+        let source = ((transform.slice(transform.search(/\x28/) + 1, transform.search(/\x29/))).split(","));
+
+
+        for (let i = 0; i < source.length; i++) {
+          source[i] = parseFloat(source[i])
+        }
+
+
+        if (code === 1) {
+          return source
+        }
+
+        matrix[0] = source[0]
+        matrix[1] = source[1]
+        matrix[4] = source[2]
+        matrix[5] = source[3]
+        matrix[12] = source[4]
+        matrix[13] = source[5]
+
+        return matrix
+      }
+
+      const transform = getStyle(element, 'transform')
+
+
+      const translate = (distanceX, distanceY) => {
+        let matrix = formatMatrix(transform)
+        console.log(matrix, distanceX, distanceY)
+        if (distanceX !== undefined && distanceY !== undefined) {
+          matrix[12] = distanceX
+          matrix[13] = distanceY
+        }
+
+        console.log(matrix)
+
+        return matrix
+      }
+
+      const translate3d = (distanceX, distanceY, distanceZ) => {
+        let matrix = formatMatrix(transform)
+        if (distanceX !== undefined && distanceY !== undefined && distanceZ !== undefined) {
+          matrix[12] = distanceX
+          matrix[13] = distanceY
+          matrix[14] = distanceZ
+        }
+        return matrix
+      }
+
+      const translateX = (distanceX) => {
+        let matrix = formatMatrix(transform)
+        matrix[12] = distanceX
+        return matrix
+      }
+      const translateY = (distanceY) => {
+        let matrix = formatMatrix(transform)
+        matrix[13] = distanceY
+        return matrix
+      }
+      const translateZ = (distanceZ) => {
+        let matrix = formatMatrix(transform)
+        matrix[13] = distanceZ
+        return matrix
+      }
+
+      const skew = (angleX, angleY) => {
+        const thetaX = (Math.PI / 180) * angleX
+        let matrix = formatMatrix(transform)
+
+        matrix[4] = Math.tan(thetaX)
+
+        if (angleY) {
+          const thetaY = (Math.PI / 180) * angleY
+          matrix[1] = Math.tan(thetaY)
+        }
+
+        return matrix
+      }
+
+      const skewX = (angleX) => {
+        const theta = (Math.PI / 180) * angle
+        let matrix = formatMatrix(transform)
+
+        matrix[4] = Math.tan(theta)
+
+        return matrix
+      }
+
+      const skewY = (angleY) => {
+        const theta = (Math.PI / 180) * angle
+        let matrix = formatMatrix(transform)
+
+        matrix[1] = Math.tan(theta)
+
+        return matrix
+      }
+
+      const scale = (scalarX, scalarY) => {
+        let matrix = formatMatrix(transform)
+
+        matrix[0] = scalar
+        matrix[5] = typeof scalarY === 'number' ? scalarY : scalar
+
+        return matrix
+      }
+
+      const scale3d = (scalarX, scalarY, scalarZ) => {
+        let matrix = formatMatrix(transform)
+        matrix[0] = scalar
+        matrix[5] = scalar
+        matrix[10] = scalar
+        return matrix
+      }
+
+      const scaleX = (scalarX) => {
+        let matrix = formatMatrix(transform)
+        matrix[0] = scalar
+        return matrix
+      }
+
+      const scaleY = (scalarY) => {
+        let matrix = formatMatrix(transform)
+        matrix[5] = scalar
+        return matrix
+      }
+
+      const scaleZ = (scalarY) => {
+        let matrix = formatMatrix(transform)
+        matrix[10] = scalar
+        return matrix
+      }
+
+      const rotate = (angle) => {
+        return rotateZ(angle)
+      }
+
+      const rotate3d = (rotateX, rotateY, rotateZ, angle) => {}
+
+      const rotateX = (angle) => {
+        let matrix = formatMatrix(transform)
+        const theta = (Math.PI / 180) * angle
+
+        matrix[5] = matrix[10] = Math.cos(theta)
+        matrix[6] = matrix[9] = Math.sin(theta)
+        matrix[9] *= -1
+
+        return matrix
+      }
+
+      const rotateY = (angle) => {
+        let matrix = formatMatrix(transform)
+        const theta = (Math.PI / 180) * angle
+
+        matrix[0] = matrix[10] = Math.cos(theta)
+        matrix[2] = matrix[8] = Math.sin(theta)
+        matrix[2] *= -1
+
+        return matrix
+      }
+
+      const rotateZ = (angle) => {
+        let matrix = formatMatrix(transform)
+        const theta = (Math.PI / 180) * angle
+
+        matrix[0] = matrix[5] = Math.cos(theta)
+        matrix[1] = matrix[4] = Math.sin(theta)
+        matrix[4] *= -1
+
+        return matrix
+      }
+
+      const perspective = (distance) => {
+        let matrix = formatMatrix(transform)
+        matrix[11] = -1 / distance
+        return matrix
+      }
+
+      return {
+        translate,
+        translate3d,
+        translateX,
+        translateY,
+        translateZ,
+        rotate,
+        rotate3d,
+        rotateX,
+        rotateY,
+        rotateZ,
+        perspective,
+        scale,
+        scale3d,
+        scaleX,
+        scaleY,
+        scaleZ,
+        skew,
+        skewX,
+        skewY
+      }
     }
 
-    matrixDecoder(document.querySelector('.red-start'))
 
 
     function draggable(element, options = {}) {
@@ -185,20 +372,24 @@
       let start = null
       let end = null
 
+      let cache = null
+
       on(window, 'mousemove', (event) => {
+        console.log(11)
         if (start) {
-          const transform = getStyle(element, 'transform')
           const current = getPosition(event)
-          const distance = getDistance(start, current)
-          console.log(transform, 'transform')
-          setStyle(element, 'transform', `translate(${distance[0]}px, ${distance[1]}px)`)
+          const [x, y] = getDistance(start, current)
+          const {
+            translate
+          } = matrixDecoder(element)
+
+          setStyle(element, 'transform', `matrix3d(${translate(x, y).join(',')})`)
         }
-
-
 
         if (end) {
           start = null
           end = null
+          cache = [x, y]
         }
 
         if (typeof onDrag === 'function') {
@@ -210,6 +401,7 @@
       on(element, 'mousedown', (event) => {
         event.stopPropagation();
         start = getPosition(event)
+
         if (typeof onDragStart === 'function') {
           onDragStart()
         }
