@@ -18,9 +18,23 @@
       margin-left: 20px;
 
     }
+
+    .draggable-element--select {
+      position: relative;
+    }
+
+    .draggable-element--select::before {
+      content: "";
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      left: -2px;
+      bottom: -2px;
+      border: 2px dashed #2196f3;
+    }
   </style>
 
-  <div class="red-start"></div>
+  <div class="red-start  draggable-element"></div>
 
 
   <script>
@@ -58,6 +72,55 @@
       }
     })()
 
+    const hasClass = (el, cls) => {
+      if (!el || !cls) return false;
+      if (cls.indexOf(' ') !== -1) throw new Error('className should not contain space.');
+      if (el.classList) {
+        return el.classList.contains(cls);
+      } else {
+        return (' ' + el.className + ' ').indexOf(' ' + cls + ' ') > -1;
+      }
+    }
+
+    const addClass = (el, cls) => {
+      if (!el) return;
+      var curClass = el.className;
+      var classes = (cls || '').split(' ');
+
+      for (var i = 0, j = classes.length; i < j; i++) {
+        var clsName = classes[i];
+        if (!clsName) continue;
+
+        if (el.classList) {
+          el.classList.add(clsName);
+        } else if (!hasClass(el, clsName)) {
+          curClass += ' ' + clsName;
+        }
+      }
+      if (!el.classList) {
+        el.setAttribute('class', curClass);
+      }
+    }
+
+    const removeClass = (el, cls) => {
+      if (!el || !cls) return;
+      var classes = cls.split(' ');
+      var curClass = ' ' + el.className + ' ';
+
+      for (var i = 0, j = classes.length; i < j; i++) {
+        var clsName = classes[i];
+        if (!clsName) continue;
+
+        if (el.classList) {
+          el.classList.remove(clsName);
+        } else if (hasClass(el, clsName)) {
+          curClass = curClass.replace(' ' + clsName + ' ', ' ');
+        }
+      }
+      if (!el.classList) {
+        el.setAttribute('class', trim(curClass));
+      }
+    };
 
     const getStyle = (function () {
       if (window && window.getComputedStyle) {
@@ -298,8 +361,11 @@
         let matrix = formatMatrix(transform)
         const theta = (Math.PI / 180) * angle
 
-        matrix[5] = matrix[10] = Math.cos(theta)
-        matrix[6] = matrix[9] = Math.sin(theta)
+
+        matrix[5] = matrix[5] + Math.cos(theta)
+        matrix[10] = matrix[10] + Math.cos(theta)
+        matrix[6] = matrix[6] + Math.sin(theta)
+        matrix[9] = matrix[9] + Math.sin(theta)
         matrix[9] *= -1
 
         return matrix
@@ -309,8 +375,11 @@
         let matrix = formatMatrix(transform)
         const theta = (Math.PI / 180) * angle
 
-        matrix[0] = matrix[10] = Math.cos(theta)
-        matrix[2] = matrix[8] = Math.sin(theta)
+
+        matrix[0] = matrix[0] + Math.cos(theta)
+        matrix[10] = matrix[10] + Math.cos(theta)
+        matrix[2] = matrix[2] + Math.sin(theta)
+        matrix[8] = matrix[8] + Math.sin(theta)
         matrix[2] *= -1
 
         return matrix
@@ -320,8 +389,10 @@
         let matrix = formatMatrix(transform)
         const theta = (Math.PI / 180) * angle
 
-        matrix[0] = matrix[5] = Math.cos(theta)
-        matrix[1] = matrix[4] = Math.sin(theta)
+        matrix[0] = matrix[0] + Math.cos(theta)
+        matrix[5] = matrix[5] + Math.cos(theta)
+        matrix[1] = matrix[1] + Math.sin(theta)
+        matrix[4] = matrix[4] + Math.sin(theta)
         matrix[4] *= -1
 
         return matrix
@@ -378,10 +449,7 @@
           setStyle(element, 'transform', `matrix3d(${translate(x, y).join(',')})`)
         }
 
-        if (end) {
-          start = null
-          end = null
-        }
+
 
         if (typeof onDrag === 'function') {
           onDrag()
@@ -394,9 +462,14 @@
         start = getPosition(event)
         translate = matrixDecoder(element).translate
 
+
+
+
         if (typeof onDragStart === 'function') {
           onDragStart()
         }
+
+
       })
 
       on(element, 'mouseup', (event) => {
@@ -405,10 +478,15 @@
         if (typeof onDragEnd === 'function') {
           onDragEnd()
         }
+
+        start = null
+        end = null
       })
 
       on(element, 'selectstart', (event) => {
         event.preventDefault()
+
+        addClass(event.target, 'draggable-element--select')
       })
     }
 
