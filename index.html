@@ -188,13 +188,10 @@
 
       const translate = (distanceX, distanceY) => {
         let matrix = formatMatrix(transform)
-        console.log(matrix, distanceX, distanceY)
         if (distanceX !== undefined && distanceY !== undefined) {
-          matrix[12] = distanceX
-          matrix[13] = distanceY
+          matrix[12] = matrix[12] + distanceX
+          matrix[13] = matrix[13] + distanceY
         }
-
-        console.log(matrix)
 
         return matrix
       }
@@ -202,26 +199,26 @@
       const translate3d = (distanceX, distanceY, distanceZ) => {
         let matrix = formatMatrix(transform)
         if (distanceX !== undefined && distanceY !== undefined && distanceZ !== undefined) {
-          matrix[12] = distanceX
-          matrix[13] = distanceY
-          matrix[14] = distanceZ
+          matrix[12] = matrix[12] + distanceX
+          matrix[13] = matrix[13] + distanceY
+          matrix[14] = matrix[14] + distanceZ
         }
         return matrix
       }
 
       const translateX = (distanceX) => {
         let matrix = formatMatrix(transform)
-        matrix[12] = distanceX
+        matrix[12] = matrix[12] + distanceX
         return matrix
       }
       const translateY = (distanceY) => {
         let matrix = formatMatrix(transform)
-        matrix[13] = distanceY
+        matrix[13] = matrix[13] + distanceY
         return matrix
       }
       const translateZ = (distanceZ) => {
         let matrix = formatMatrix(transform)
-        matrix[13] = distanceZ
+        matrix[13] = matrix[13] + distanceZ
         return matrix
       }
 
@@ -229,11 +226,11 @@
         const thetaX = (Math.PI / 180) * angleX
         let matrix = formatMatrix(transform)
 
-        matrix[4] = Math.tan(thetaX)
+        matrix[4] = matrix[4] + Math.tan(thetaX)
 
         if (angleY) {
           const thetaY = (Math.PI / 180) * angleY
-          matrix[1] = Math.tan(thetaY)
+          matrix[1] = matrix[1] + Math.tan(thetaY)
         }
 
         return matrix
@@ -243,7 +240,7 @@
         const theta = (Math.PI / 180) * angle
         let matrix = formatMatrix(transform)
 
-        matrix[4] = Math.tan(theta)
+        matrix[4] = matrix[4] + Math.tan(theta)
 
         return matrix
       }
@@ -252,7 +249,7 @@
         const theta = (Math.PI / 180) * angle
         let matrix = formatMatrix(transform)
 
-        matrix[1] = Math.tan(theta)
+        matrix[1] = matrix[1] + Math.tan(theta)
 
         return matrix
       }
@@ -260,35 +257,35 @@
       const scale = (scalarX, scalarY) => {
         let matrix = formatMatrix(transform)
 
-        matrix[0] = scalar
-        matrix[5] = typeof scalarY === 'number' ? scalarY : scalar
+        matrix[0] = matrix[0] + scalar
+        matrix[5] = matrix[5] + typeof scalarY === 'number' ? scalarY : scalar
 
         return matrix
       }
 
       const scale3d = (scalarX, scalarY, scalarZ) => {
         let matrix = formatMatrix(transform)
-        matrix[0] = scalar
-        matrix[5] = scalar
-        matrix[10] = scalar
+        matrix[0] = matrix[0] + scalar
+        matrix[5] = matrix[5] + scalar
+        matrix[10] = matrix[10] + scalar
         return matrix
       }
 
       const scaleX = (scalarX) => {
         let matrix = formatMatrix(transform)
-        matrix[0] = scalar
+        matrix[0] = matrix[0] + scalar
         return matrix
       }
 
       const scaleY = (scalarY) => {
         let matrix = formatMatrix(transform)
-        matrix[5] = scalar
+        matrix[5] = matrix[5] + scalar
         return matrix
       }
 
       const scaleZ = (scalarY) => {
         let matrix = formatMatrix(transform)
-        matrix[10] = scalar
+        matrix[10] = matrix[10] + scalar
         return matrix
       }
 
@@ -296,7 +293,6 @@
         return rotateZ(angle)
       }
 
-      const rotate3d = (rotateX, rotateY, rotateZ, angle) => {}
 
       const rotateX = (angle) => {
         let matrix = formatMatrix(transform)
@@ -333,7 +329,7 @@
 
       const perspective = (distance) => {
         let matrix = formatMatrix(transform)
-        matrix[11] = -1 / distance
+        matrix[11] = matrix[11] + -1 / distance
         return matrix
       }
 
@@ -344,7 +340,6 @@
         translateY,
         translateZ,
         rotate,
-        rotate3d,
         rotateX,
         rotateY,
         rotateZ,
@@ -371,17 +366,14 @@
 
       let start = null
       let end = null
+      let translate = null
 
-      let cache = null
 
       on(window, 'mousemove', (event) => {
-        console.log(11)
         if (start) {
           const current = getPosition(event)
           const [x, y] = getDistance(start, current)
-          const {
-            translate
-          } = matrixDecoder(element)
+
 
           setStyle(element, 'transform', `matrix3d(${translate(x, y).join(',')})`)
         }
@@ -389,7 +381,6 @@
         if (end) {
           start = null
           end = null
-          cache = [x, y]
         }
 
         if (typeof onDrag === 'function') {
@@ -401,6 +392,7 @@
       on(element, 'mousedown', (event) => {
         event.stopPropagation();
         start = getPosition(event)
+        translate = matrixDecoder(element).translate
 
         if (typeof onDragStart === 'function') {
           onDragStart()
